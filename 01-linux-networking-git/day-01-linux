@@ -1,1 +1,44 @@
+*DAY 1 — Linux Foundation*
+Learn
+Linux filesystem
+/
+/etc
+/var
+/home
+/tmp
+/opt
+/usr
+/proc
+/sys
+File commands
+ls
+cd
+pwd
+cp
+mv
+rm
+find
+grep
+head
+tail
+less
+Lab
 
+Create:
+
+devops-lab/
+├── scripts/
+├── logs/
+├── configs/
+├── backup/
+└── README.md
+
+Practice:
+
+find
+grep
+awk
+sed
+sort
+cut
+xargs
