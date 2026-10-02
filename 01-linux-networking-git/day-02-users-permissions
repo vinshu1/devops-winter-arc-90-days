@@ -1,0 +1,46 @@
+DAY 2 — Users, Groups & Permissions
+Learn
+Users
+Groups
+UID/GID
+/etc/passwd
+/etc/shadow
+/etc/group
+chmod
+chown
+chgrp
+umask
+sudo
+SUID/SGID/sticky bit
+Lab
+
+Create:
+
+devops
+developers
+operations
+
+Create users and assign them appropriately.
+
+Practice:
+
+useradd
+usermod
+passwd
+groupadd
+id
+su
+sudo
+Troubleshooting
+
+Create a permission issue and fix it.
+
+Interview
+
+Answer:
+
+Difference between 755, 644 and 700?
+
+How does sudo work?
+
+What is SUID?
