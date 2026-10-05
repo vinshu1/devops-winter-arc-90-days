@@ -1,46 +1,452 @@
-DAY 2 — Users, Groups & Permissions
-Learn
-Users
-Groups
-UID/GID
-/etc/passwd
-/etc/shadow
-/etc/group
+Day 02 — Users, Groups & Permissions
+Phase 1 · Basecamp · Week 1
+Goal: Master user and group management, file permissions, and privilege escalation — the foundation of Linux security and least‑privilege access.
+
+📋 Table of Contents
+Learning Objectives
+
+Core Concepts
+
+Users, Groups, UID/GID
+
+/etc/passwd, /etc/shadow, /etc/group
+
 chmod
-chown
-chgrp
+
+chown & chgrp
+
 umask
+
 sudo
-SUID/SGID/sticky bit
-Lab
 
-Create:
+SUID, SGID, Sticky Bit
 
-devops
-developers
-operations
+Command Reference
 
-Create users and assign them appropriately.
+Lab: Create Groups and Users
 
-Practice:
+Troubleshooting: Permission Issue
 
-useradd
-usermod
-passwd
-groupadd
+Interview Questions
+
+Notes & Reflections
+
+Day 2 Checklist
+
+Next Steps
+
+🎯 Learning Objectives
+By the end of this day, you should be able to:
+
+Explain the difference between users, groups, UID, and GID
+
+Read and interpret /etc/passwd, /etc/shadow, and /etc/group
+
+Set file permissions using symbolic and numeric modes (chmod)
+
+Change ownership with chown and chgrp
+
+Understand and configure umask
+
+Use sudo safely and explain how it works
+
+Identify and apply SUID, SGID, and sticky bit
+
+Create users and groups, assign them appropriately, and troubleshoot permission issues
+
+🧠 Core Concepts
+Users, Groups, UID/GID
+User: An account that can own files and run processes. Identified by UID (User ID).
+
+Group: A collection of users. Identified by GID (Group ID). Every user has a primary group and can belong to supplementary groups.
+
+Root: UID 0 — the superuser with all privileges.
+
+System users: UID < 1000 (typically), used by services (e.g., www-data, sshd).
+
+Regular users: UID ≥ 1000.
+
+bash
+id                    # Show current user's UID, GID, groups
+id alice              # Show another user's info
+/etc/passwd, /etc/shadow, /etc/group
+File	Purpose	Format
+/etc/passwd	User account info	username:x:UID:GID:comment:home:shell
+/etc/shadow	Encrypted passwords & aging	username:hash:lastchg:min:max:warn:inactive:expire
+/etc/group	Group definitions	groupname:x:GID:member1,member2
+Note: The x in /etc/passwd means the password is stored in /etc/shadow.
+
+bash
+# View entries
+grep alice /etc/passwd
+sudo grep alice /etc/shadow
+grep developers /etc/group
+chmod
+Symbolic mode:
+
+Symbol	Meaning
+u	User (owner)
+g	Group
+o	Others
+a	All
++	Add permission
+-	Remove permission
+=	Set exactly
+bash
+chmod u+x file          # Add execute for owner
+chmod go-w file         # Remove write for group and others
+chmod a+r file          # Add read for all
+Numeric (octal) mode:
+
+Value	Permission
+4	Read (r)
+2	Write (w)
+1	Execute (x)
+0	None
+Examples:
+
+755 = rwxr-xr-x
+
+644 = rw-r--r--
+
+700 = rwx------
+
+600 = rw-------
+
+bash
+chmod 755 script.sh
+chmod 644 config.conf
+chmod 700 private.key
+chown & chgrp
+bash
+chown alice file.txt              # Change owner
+chown alice:developers file.txt   # Change owner and group
+chown -R alice:developers dir/    # Recursive
+chgrp developers file.txt         # Change group only
+umask
+umask determines default permissions for newly created files and directories.
+
+Files: base 666 – umask
+
+Directories: base 777 – umask
+
+bash
+umask                    # Show current umask (e.g., 0022)
+umask 027                # Set umask for current shell
+Common umask values:
+
+umask	File perms	Dir perms
+022	644	755
+027	640	750
+077	600	700
+sudo
+sudo allows a permitted user to execute a command as another user (usually root) according to rules in /etc/sudoers.
+
+bash
+sudo command             # Run as root
+sudo -u alice command    # Run as another user
+sudo -i                  # Interactive root shell
+sudo -l                  # List allowed commands
+visudo                   # Safely edit /etc/sudoers
+How it works:
+
+User runs sudo.
+
+System checks /etc/sudoers (and /etc/sudoers.d/) for permission.
+
+If allowed, user authenticates with their own password (by default).
+
+Command runs with target user's privileges.
+
+Action is logged (usually to /var/log/auth.log or /var/log/secure).
+
+SUID, SGID, Sticky Bit
+Special Permission	Numeric	Symbolic	Effect
+SUID	4	u+s	File executes with owner's privileges
+SGID	2	g+s	File executes with group's privileges; on directory, new files inherit group
+Sticky Bit	1	+t	On directory, only owner can delete/rename their files
+bash
+chmod 4755 /usr/bin/passwd     # SUID
+chmod 2775 /shared             # SGID on directory
+chmod 1777 /tmp                # Sticky bit
+ls -l /usr/bin/passwd          # -rwsr-xr-x
+ls -ld /tmp                    # drwxrwxrwt
+🛠 Command Reference
+User management
+bash
+useradd -m -s /bin/bash alice          # Create user with home and shell
+useradd -m -G developers,operations bob
+usermod -aG docker alice               # Add to supplementary group
+usermod -s /bin/zsh alice              # Change shell
+userdel -r alice                       # Delete user and home
+passwd alice                           # Set password
+Group management
+bash
+groupadd developers
+groupmod -n devs developers            # Rename group
+groupdel developers
+Inspect
+bash
+id alice
+groups alice
+finger alice                           # if installed
+Switch user
+bash
+su - alice                             # Login shell as alice
+su alice                               # Non-login shell
+sudo -u alice whoami
+Permissions
+bash
+ls -l file
+stat file
+chmod 644 file
+chown alice:developers file
+chgrp developers file
+umask
+🧪 Lab: Create Groups and Users
+Objective: Create three groups (devops, developers, operations), create users, and assign them appropriately. Then set up a shared directory with SGID.
+
+Step 1: Create groups
+bash
+sudo groupadd devops
+sudo groupadd developers
+sudo groupadd operations
+Verify:
+
+bash
+grep -E 'devops|developers|operations' /etc/group
+Step 2: Create users
+alice → primary group devops, supplementary developers
+
+bob → primary group developers, supplementary operations
+
+carol → primary group operations, supplementary devops
+
+bash
+sudo useradd -m -g devops -G developers alice
+sudo useradd -m -g developers -G operations bob
+sudo useradd -m -g operations -G devops carol
+
+# Set passwords
+echo "alice:Password123" | sudo chpasswd
+echo "bob:Password123"   | sudo chpasswd
+echo "carol:Password123" | sudo chpasswd
+Verify:
+
+bash
+id alice
+id bob
+id carol
+Step 3: Create a shared directory with SGID
+bash
+sudo mkdir -p /shared/dev-project
+sudo chown root:developers /shared/dev-project
+sudo chmod 2775 /shared/dev-project
+ls -ld /shared/dev-project
+Now files created inside will inherit the developers group.
+
+Step 4: Test access
+bash
+su - alice
+touch /shared/dev-project/alice.txt
+ls -l /shared/dev-project/alice.txt   # Should show group developers
+exit
+
+su - bob
+touch /shared/dev-project/bob.txt
+exit
+
+su - carol
+touch /shared/dev-project/carol.txt   # Should fail if carol not in developers
+exit
+Step 5: Cleanup (optional)
+bash
+sudo userdel -r alice bob carol
+sudo groupdel devops developers operations
+sudo rm -rf /shared/dev-project
+🔥 Troubleshooting: Permission Issue
+Scenario: A user cannot read a file they should have access to.
+
+Step 1: Reproduce the issue
+bash
+# As root, create a file owned by root with 600
+sudo touch /tmp/secret.txt
+sudo chmod 600 /tmp/secret.txt
+
+# As alice, try to read
+su - alice
+cat /tmp/secret.txt
+# Output: Permission denied
+Step 2: Diagnose
+bash
+# Check file permissions and ownership
+ls -l /tmp/secret.txt
+# -rw------- 1 root root ... /tmp/secret.txt
+
+# Check current user
 id
-su
-sudo
-Troubleshooting
+# uid=1001(alice) gid=1001(devops) groups=1001(devops),1002(developers)
 
-Create a permission issue and fix it.
+# Check directory permissions
+ls -ld /tmp
+Root cause: File is owned by root and only root has read/write. Alice has no permissions.
 
-Interview
+Step 3: Fix
+Option A: Change ownership
 
-Answer:
+bash
+sudo chown alice:alice /tmp/secret.txt
+Option B: Adjust permissions
 
-Difference between 755, 644 and 700?
+bash
+sudo chmod 640 /tmp/secret.txt
+sudo chgrp developers /tmp/secret.txt
+# Now alice (in developers) can read
+Option C: Use ACLs (more granular)
 
+bash
+sudo setfacl -m u:alice:r /tmp/secret.txt
+getfacl /tmp/secret.txt
+Step 4: Verify
+bash
+su - alice
+cat /tmp/secret.txt   # Should succeed
+exit
+Debug Chain for Permissions
+text
+ls -l <file>          # Check owner, group, mode
+id                    # Check your UID/GID/groups
+namei -l <path>       # Check permissions on each path component
+getfacl <file>        # Check ACLs (if used)
+sudo -l               # Check sudo rights
+🎤 Interview Questions
+Basic
+What is the difference between a user and a group?
+
+What is UID and GID?
+
+What is the purpose of /etc/passwd?
+
+How do you create a new user?
+
+How do you change a file's permissions?
+
+What does chmod 755 mean?
+
+What is umask?
+
+What is sudo?
+
+How do you add a user to a group?
+
+What is the difference between su and sudo?
+
+Intermediate
+Explain the difference between 755, 644, and 700.
+
+How does sudo work under the hood?
+
+What is SUID and why is it used?
+
+What is SGID on a directory?
+
+What is the sticky bit and where is it commonly used?
+
+How do you change the owner of a file recursively?
+
+What is the difference between primary and supplementary groups?
+
+How do you list all groups a user belongs to?
+
+What is /etc/shadow and why is it separate?
+
+How do you set a password for a user non‑interactively?
+
+Advanced
+How would you grant a user permission to run only specific commands as root?
+
+What are the security risks of SUID?
+
+How do ACLs differ from traditional permissions?
+
+How do you troubleshoot a "Permission denied" error?
+
+What is the principle of least privilege and how do you apply it?
+
+How do you audit file permissions across a system?
+
+What is visudo and why use it instead of editing /etc/sudoers directly?
+
+How does the kernel check permissions when a process accesses a file?
+
+What is the difference between chmod 2775 and chmod 775?
+
+How do you find all SUID files on a system?
+
+Specific Answers
+Difference between 755, 644, and 700?
+
+Mode	Owner	Group	Others	Typical Use
+755	rwx	r-x	r-x	Executables, directories
+644	rw-	r--	r--	Regular files, configs
+700	rwx	---	---	Private directories, scripts
 How does sudo work?
 
+User runs sudo <command>.
+
+System checks /etc/sudoers (and /etc/sudoers.d/) for permission.
+
+If allowed, user authenticates with their own password (unless NOPASSWD).
+
+Command runs with target user's privileges (usually root).
+
+Action is logged to /var/log/auth.log or /var/log/secure.
+
 What is SUID?
+
+SUID (Set User ID) is a special permission that allows a file to execute with the privileges of the file's owner, not the user running it.
+
+Example: /usr/bin/passwd has SUID root so users can change their own passwords (which requires writing to /etc/shadow).
+
+Numeric: 4 prefix (e.g., 4755). Symbolic: u+s.
+
+Security risk: If a SUID binary has a vulnerability, it can be exploited to gain root.
+
+📝 Notes & Reflections
+Key Takeaways
+Users and groups are the foundation of Linux access control.
+Always follow least privilege — use sudo instead of logging in as root.
+chmod numeric mode is fast; symbolic is more readable for complex changes.
+SUID/SGID/sticky bit are powerful but must be used carefully.
+umask controls default permissions — set it appropriately for the environment.
+
+What I Struggled With
+□ Remembering the order of fields in /etc/passwd
+□ SUID vs SGID differences
+□ Calculating umask values
+□ Using visudo safely
+What I Want to Learn Next
+□ ACLs in depth
+□ PAM (Pluggable Authentication Modules)
+□ SELinux/AppArmor
+□ LDAP integration
+□ SSH key‑based authentication and authorized_keys
+
+📚 Resources
+man passwd
+man shadow
+man group
+man chmod
+man sudoers
+Linux Permissions Explained (Red Hat)
+SUID, SGID, Sticky Bit (GeeksforGeeks)
+
+✅ Day 2 Checklist
+□ Read all core concepts
+□ Created groups devops, developers, operations
+□ Created users alice, bob, carol and assigned groups
+□ Practiced all commands in the reference
+□ Created and fixed a permission issue
+□ Answered the three specific interview questions
+□ Documented notes and reflections
+□ Committed README to GitHub
