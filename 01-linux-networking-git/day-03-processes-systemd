@@ -1,40 +1,316 @@
-DAY 3 — Processes & Services
-Learn
-ps
-top
-htop
-pgrep
-pkill
-kill
-kill -9
-nice
-renice
-jobs
-bg
-fg
+Day 03 — Processes & Services
+Phase 1 · Basecamp · Week 1
+Goal: Inspect and control running processes, then create, break, and troubleshoot a systemd service.
 
-Then systemd:
+📋 Table of Contents
+Learning Objectives
 
-systemctl
+Core Concepts
+
+Command Reference
+
+Lab: Build a systemd Service
+
+Break It: Introduce a Wrong Config and Fix It
+
+Interview: Application Is Down — Troubleshoot
+
+Notes & Reflections
+
+Day 3 Checklist
+
+Next Steps
+
+🎯 Learning Objectives
+Inspect processes with ps, top, htop, pgrep
+
+Send signals with kill, pkill, and understand kill -9 vs kill -15
+
+Adjust priority with nice and renice
+
+Manage background jobs with jobs, bg, fg
+
+Create and control a systemd service
+
+Read logs with journalctl
+
+Troubleshoot a broken service methodically
+
+🧠 Core Concepts
+Process States
+State	Meaning
+R	Running
+S	Sleeping (interruptible)
+D	Uninterruptible sleep (I/O)
+Z	Zombie
+T	Stopped
+Signals
+Signal	Number	Meaning
+SIGTERM	15	Graceful shutdown (default)
+SIGKILL	9	Force kill (cannot be caught)
+SIGHUP	1	Reload config
+SIGINT	2	Ctrl+C
+SIGSTOP	19	Pause
+Rule: Always try kill (SIGTERM) first. Use kill -9 only as a last resort — it prevents cleanup.
+
+systemd Units
+Unit	Purpose
+.service	A service/daemon
+.timer	Scheduled task (like cron)
+.socket	Socket activation
+.target	Group of units
+🛠 Command Reference
+Process inspection
+bash
+ps aux                      # All processes with details
+ps -ef                      # Full-format listing
+ps aux | grep nginx         # Filter by name
+pgrep nginx                 # Get PID by name
+pgrep -a nginx              # PID + command
+top                         # Live process viewer
+htop                        # Better live viewer
+Signals
+bash
+kill <PID>                  # SIGTERM (graceful)
+kill -9 <PID>               # SIGKILL (force)
+kill -HUP <PID>             # Reload config
+pkill nginx                 # Kill by name
+pkill -9 nginx              # Force kill by name
+Priority
+bash
+nice -n 10 ./script.sh      # Start with lower priority
+renice -n -5 -p <PID>       # Change priority of running process
+Range: -20 (highest priority) to 19 (lowest). Only root can set negative values.
+
+Jobs
+bash
+command &                   # Run in background
+jobs                        # List background jobs
+bg %1                       # Resume job 1 in background
+fg %1                       # Bring job 1 to foreground
+Ctrl+Z                      # Suspend current job
+systemd
+bash
+systemctl start myapp       # Start service
+systemctl stop myapp        # Stop service
+systemctl restart myapp     # Restart
+systemctl reload myapp      # Reload config
+systemctl status myapp      # Check status
+systemctl enable myapp      # Enable at boot
+systemctl disable myapp     # Disable at boot
+systemctl daemon-reload     # Reload unit files after edit
+systemctl list-units --type=service --state=running
 journalctl
-Lab
+bash
+journalctl -u myapp              # Logs for a unit
+journalctl -u myapp -f           # Follow logs
+journalctl -u myapp --since "10 min ago"
+journalctl -u myapp -n 50        # Last 50 lines
+journalctl -u myapp -p err       # Only errors
+journalctl -xe                   # Recent errors with explanations
+🧪 Lab: Build a systemd Service
+Step 1: Create a simple app
+bash
+sudo mkdir -p /opt/myapp
+sudo tee /opt/myapp/app.sh <<'EOF'
+#!/bin/bash
+while true; do
+  echo "myapp running at $(date)"
+  sleep 5
+done
+EOF
+sudo chmod +x /opt/myapp/app.sh
+Step 2: Create the unit file
+bash
+sudo tee /etc/systemd/system/myapp.service <<'EOF'
+[Unit]
+Description=My App Service
+After=network.target
 
-Create a simple systemd service.
+[Service]
+Type=simple
+ExecStart=/opt/myapp/app.sh
+Restart=on-failure
+User=root
 
-Example:
+[Install]
+WantedBy=multi-user.target
+EOF
+Step 3: Load, start, verify
+bash
+sudo systemctl daemon-reload
+sudo systemctl start myapp
+sudo systemctl status myapp
+sudo systemctl enable myapp
+Step 4: Inspect logs
+bash
+journalctl -u myapp -f
+Step 5: Control the service
+bash
+sudo systemctl restart myapp
+sudo systemctl stop myapp
+sudo systemctl start myapp
+🔥 Break It: Introduce a Wrong Config and Fix It
+Break 1: Wrong ExecStart path
+bash
+sudo sed -i 's|/opt/myapp/app.sh|/opt/myapp/wrong.sh|' /etc/systemd/system/myapp.service
+sudo systemctl daemon-reload
+sudo systemctl restart myapp
+sudo systemctl status myapp
+Symptom: status shows failed with exit code 203/EXEC.
 
-myapp.service
+Diagnose:
 
-Start/stop/restart it.
+bash
+systemctl status myapp
+journalctl -u myapp -n 20
+ls -l /opt/myapp/
+Fix:
 
-Break it
+bash
+sudo sed -i 's|/opt/myapp/wrong.sh|/opt/myapp/app.sh|' /etc/systemd/system/myapp.service
+sudo systemctl daemon-reload
+sudo systemctl restart myapp
+Break 2: Missing execute permission
+bash
+sudo chmod -x /opt/myapp/app.sh
+sudo systemctl restart myapp
+Symptom: Permission denied in journal.
 
-Introduce a wrong configuration.
+Fix:
 
-Then troubleshoot:
+bash
+sudo chmod +x /opt/myapp/app.sh
+sudo systemctl restart myapp
+Break 3: Service crash-loops
+bash
+sudo sed -i 's|ExecStart=.*|ExecStart=/bin/false|' /etc/systemd/system/myapp.service
+sudo systemctl daemon-reload
+sudo systemctl restart myapp
+Symptom: status shows activating (auto-restart) and Restart=on-failure keeps trying.
 
-systemctl status
-journalctl -u
-Interview
+Diagnose:
 
-Application is down. How do you troubleshoot?
+bash
+systemctl status myapp
+journalctl -u myapp -n 30
+systemctl show myapp -p NRestarts
+Fix: Restore correct ExecStart, reload, restart.
+
+Debug Chain for Services
+text
+systemctl status myapp
+  ↓
+journalctl -u myapp -n 50
+  ↓
+Check ExecStart path + permissions
+  ↓
+Check User= has access
+  ↓
+Check dependencies (After=, Requires=)
+  ↓
+systemctl daemon-reload → restart
+🎤 Interview: Application Is Down — Troubleshoot
+Answer framework:
+
+Confirm the symptom
+
+bash
+systemctl status myapp
+curl -v http://localhost:<port>/health
+Check the service state
+
+Is it active, failed, inactive, or activating?
+
+If failed → check exit code.
+
+Read logs
+
+bash
+journalctl -u myapp -n 100 --no-pager
+journalctl -u myapp --since "5 min ago"
+Check the process
+
+bash
+ps aux | grep myapp
+ss -lntp | grep <port>
+Check resources
+
+bash
+df -h          # disk
+free -h        # memory
+top            # CPU
+Check dependencies
+
+Database reachable?
+
+Config file present?
+
+Environment variables set?
+
+Network/DNS working?
+
+Check recent changes
+
+Recent deploy? Config change? Certificate expiry?
+
+bash
+git log --oneline -5
+Fix and verify
+
+Restart: systemctl restart myapp
+
+Confirm: systemctl status myapp + health check
+
+Monitor for 5 minutes.
+
+Common root causes:
+
+Symptom	Likely Cause
+203/EXEC	Wrong path or missing +x
+exit 1 immediately	Config error, missing env var
+activating (auto-restart)	Crash loop — check app logs
+Port already in use	Another process bound to same port
+OOMKilled	Memory limit too low
+Timeout on start	Dependency (DB, cache) unreachable
+
+📝 Notes & Reflections
+Key Takeaways
+kill (SIGTERM) first, kill -9 only as last resort
+systemctl daemon-reload is required after editing unit files
+journalctl -u <service> is the fastest path to root cause
+Exit code 203/EXEC almost always = wrong path or missing permission
+Restart=on-failure can hide a crash loop — check NRestarts
+
+What I Struggled With
+□ Remembering signal numbers
+□ Understanding Type=simple vs forking vs notify
+□ Reading journalctl output efficiently
+
+What I Want to Learn Next
+□ systemd timers
+□ systemd socket activation
+□ cgroups and resource limits
+□ Process tracing with strace
+
+📚 Resources
+man systemd.service
+man systemctl
+man journalctl
+systemd for Administrators (Lennart Poettering)
+Linux Process Management (Red Hat)
+
+✅ Day 3 Checklist
+□ Practiced ps, top, htop, pgrep, pkill, kill
+□ Used nice and renice
+□ Managed background jobs with jobs, bg, fg
+□ Created a working myapp.service
+□ Broke it 3 ways and fixed each
+□ Answered the "application is down" interview question out loud
+□ Committed README to GitHub
+
+🚀 Next Steps
+Day 4: Storage + Filesystem (LVM, df/du, inode vs disk full)
+Day 5: Networking (IP, DNS, ports, HTTP troubleshooting)
+Day 6: Permissions (users, groups, sudo, least privilege)
+Day 7: Git/GitHub + Project 4 (Hardened Linux Server)
