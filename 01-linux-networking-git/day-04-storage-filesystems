@@ -1,45 +1,438 @@
-DAY 4 — Storage + Filesystem
-Learn
-df
-du
-lsblk
-mount
-umount
-blkid
-fdisk
-parted
+Day 04 — Storage + Filesystem
+Phase 1 · Basecamp · Week 1
+Goal: Master Linux storage from physical disk to mounted filesystem, and be able to debug and fix a full disk (space or inodes) under pressure.
 
-Because you're coming from Linux administration, go deeper:
-
-partitions
-filesystem
-mount points
+📋 Table of Contents
+Learning Objectives
+Core Concepts
+Partitions
+Filesystems
+Mount Points
 /etc/fstab
-inode
-disk full vs inode full
+Inodes
+Disk Full vs Inode Full
 XFS vs ext4
-LVM basics
-Lab
+LVM Basics
+Command Reference
+Lab: Create a Virtual Disk and Build the Full Stack
+Troubleshooting: Simulate /data at 100% and Fix It
+Interview Questions
+Notes & Reflections
+Resources
+Day 4 Checklist
+Next Steps
 
-Create a virtual disk and:
+🎯 Learning Objectives
+By the end of this day, you should be able to:
+Explain the Linux storage stack: disk → partition → PV → VG → LV → filesystem → mount
+Use df, du, lsblk, blkid, mount, umount, fdisk, and parted confidently
+Understand and edit /etc/fstab safely
+Differentiate between disk space exhaustion and inode exhaustion
+Compare XFS and ext4 and choose the right filesystem for a workload
+Create and manage LVM volumes (PV, VG, LV)
+Diagnose and fix a full /data mount by extending storage
 
-Disk
- ↓
-Partition
- ↓
-PV
- ↓
-VG
- ↓
-LV
- ↓
-Filesystem
- ↓
-Mount
-Troubleshooting
+🧠 Core Concepts
+Partitions
+A partition is a logical division of a physical disk. It allows you to separate data, install multiple OSes, or apply different filesystems.
 
+Tool	Style	Best For
+fdisk	MBR (DOS)	Disks < 2 TB, simple setups
+parted	GPT	Disks > 2 TB, modern systems
+bash
+# List partitions
+fdisk -l
+parted -l
+
+# Interactive partitioning with fdisk
+fdisk /dev/sdb
+
+# Create a GPT partition table with parted
+parted /dev/sdb mklabel gpt
+parted /dev/sdb mkpart primary ext4 0% 100%
+Filesystems
+A filesystem defines how data is stored and retrieved on a partition.
+
+Filesystem	Max File Size	Max Volume	Journaling	Best For
+ext4	16 TB	1 EB	Yes	General purpose, stable
+XFS	8 EB	8 EB	Yes	Large files, high performance
+Btrfs	16 EB	16 EB	Yes (CoW)	Snapshots, advanced features
+tmpfs	RAM	RAM	No	Temporary, in-memory
+bash
+# Create an ext4 filesystem
+mkfs.ext4 /dev/sdb1
+
+# Create an XFS filesystem
+mkfs.xfs /dev/sdb1
+
+# Check filesystem type
+blkid /dev/sdb1
+Mount Points
+A mount point is a directory where a filesystem is attached to the tree.
+
+bash
+# Mount a filesystem
+mount /dev/sdb1 /mnt/data
+
+# Unmount
+umount /mnt/data
+
+# Show all mounts
+mount | column -t
+
+# Show mounts with filesystem type and usage
+df -hT
+/etc/fstab
+/etc/fstab defines filesystems to mount automatically at boot.
+
+Format:
+
+text
+<device>  <mount point>  <filesystem>  <options>  <dump>  <pass>
+Example:
+
+text
+UUID=1234-ABCD  /data  ext4  defaults,noatime  0  2
+Field	Meaning
+device	UUID, LABEL, or path
+mount point	Where to mount
+filesystem	ext4, xfs, etc.
+options	defaults, noatime, ro, etc.
+dump	0 (ignore)
+pass	fsck order: 0=don't check, 1=root, 2=others
+Always test with mount -a before rebooting!
+
+bash
+# Get UUID
+blkid /dev/sdb1
+
+# Test fstab
+mount -a
+Inodes
+An inode stores metadata about a file (permissions, owner, size, pointers to data blocks) — but not the filename.
+
+Every file consumes one inode.
+
+Inodes are allocated when the filesystem is created.
+
+Running out of inodes means you cannot create new files even if disk space is free.
+
+bash
+# Check inode usage
+df -i
+
+# See inode number of a file
+ls -i file.txt
+
+# Count inodes used in a directory
+find /path -xdev -printf '%i\n' | wc -l
+Disk Full vs Inode Full
+Symptom	Check	Cause	Fix
+Disk full	df -h shows 100%	Large files	Delete/compress files, extend disk
+Inode full	df -i shows 100%	Many small files	Delete small files, increase inodes (recreate FS)
+Disk full:
+
+bash
+df -h
+du -sh /* | sort -rh | head -10
+Inode full:
+
+bash
+df -i
+find / -xdev -type f | wc -l
+find / -xdev -type d -size +100M  # directories with many files
+XFS vs ext4
+Feature	ext4	XFS
+Max file size	16 TB	8 EB
+Max filesystem	1 EB	8 EB
+Journaling	Yes	Yes
+Resize	Grow & shrink	Grow only (no shrink)
+Performance	Good general purpose	Excellent for large files & parallel I/O
+Inodes	Fixed at creation (can be dynamic)	Dynamic allocation
+Best for	Root filesystem, general use	Data volumes, databases, large files
+Note: XFS cannot be shrunk. Plan accordingly.
+
+LVM Basics
+LVM (Logical Volume Manager) adds a layer of abstraction between physical disks and filesystems.
+
+Stack:
+
+text
+Physical Disk → Partition → PV (Physical Volume) → VG (Volume Group) → LV (Logical Volume) → Filesystem → Mount
+Benefits:
+
+Resize volumes online
+
+Combine multiple disks into one pool
+
+Snapshots
+
+Easy migration
+
+Commands:
+
+Command	Purpose
+pvcreate	Create physical volume
+pvs	List PVs
+vgcreate	Create volume group
+vgs	List VGs
+lvcreate	Create logical volume
+lvs	List LVs
+lvextend	Extend LV
+resize2fs / xfs_growfs	Resize filesystem
+lvremove	Remove LV
+🛠 Command Reference
+df — Disk space usage
+bash
+df -h              # Human-readable
+df -hT             # Show filesystem type
+df -i              # Inode usage
+df -h /data        # Specific mount
+du — Directory disk usage
+bash
+du -sh /var/log           # Total size of directory
+du -sh /* | sort -rh | head -10   # Top 10 largest directories
+du -ah /data | sort -rh | head -20 # Top 20 largest files/dirs
+lsblk — List block devices
+bash
+lsblk
+lsblk -f           # Show filesystem type and UUID
+lsblk -o NAME,SIZE,TYPE,MOUNTPOINT
+mount / umount
+bash
+mount /dev/sdb1 /mnt/data
+umount /mnt/data
+mount | column -t
+mount -a           # Mount all from fstab
+blkid — Block device UUIDs
+bash
+blkid
+blkid /dev/sdb1
+fdisk — MBR partitioning
+bash
+fdisk -l
+fdisk /dev/sdb
+# Interactive: n (new), p (primary), w (write)
+parted — GPT partitioning
+bash
+parted -l
+parted /dev/sdb mklabel gpt
+parted /dev/sdb mkpart primary ext4 0% 100%
+LVM Commands
+bash
+pvcreate /dev/sdb1
+pvs
+vgcreate vg_data /dev/sdb1
+vgs
+lvcreate -L 10G -n lv_data vg_data
+lvs
+mkfs.ext4 /dev/vg_data/lv_data
+mount /dev/vg_data/lv_data /data
+
+# Extend
+lvextend -L +5G /dev/vg_data/lv_data
+resize2fs /dev/vg_data/lv_data      # ext4
+# xfs_growfs /data                   # XFS
+🧪 Lab: Create a Virtual Disk and Build the Full Stack
+Objective: Create a virtual disk, partition it, build LVM on top, format, and mount it.
+
+Step 1: Create a virtual disk (loop device)
+bash
+# Create a 2GB file to act as a disk
+dd if=/dev/zero of=/tmp/vdisk.img bs=1M count=2048
+
+# Attach it as a loop device
+losetup -fP /tmp/vdisk.img
+losetup -a
+You should see something like /dev/loop0.
+
+Step 2: Partition the disk
+bash
+fdisk /dev/loop0
+# n → new partition
+# p → primary
+# 1 → partition number
+# Enter → default first sector
+# Enter → default last sector (uses whole disk)
+# t → type
+# 8e → Linux LVM
+# w → write
+Verify:
+
+bash
+fdisk -l /dev/loop0
+Step 3: Create Physical Volume (PV)
+bash
+pvcreate /dev/loop0p1
+pvs
+Step 4: Create Volume Group (VG)
+bash
+vgcreate vg_lab /dev/loop0p1
+vgs
+Step 5: Create Logical Volume (LV)
+bash
+lvcreate -L 1G -n lv_data vg_lab
+lvs
+Step 6: Create filesystem
+bash
+mkfs.ext4 /dev/vg_lab/lv_data
+blkid /dev/vg_lab/lv_data
+Step 7: Mount
+bash
+mkdir -p /data
+mount /dev/vg_lab/lv_data /data
+df -h /data
+Step 8: Test persistence
+bash
+# Add to fstab
+echo "UUID=$(blkid -s UUID -o value /dev/vg_lab/lv_data) /data ext4 defaults 0 2" >> /etc/fstab
+
+# Test
+umount /data
+mount -a
+df -h /data
+Step 9: Cleanup (optional)
+bash
+umount /data
+lvremove /dev/vg_lab/lv_data
+vgremove vg_lab
+pvremove /dev/loop0p1
+losetup -d /dev/loop0
+rm /tmp/vdisk.img
+🔥 Troubleshooting: Simulate /data at 100% and Fix It
+Scenario 1: Disk space full
 Simulate:
 
-/data = 100%
+bash
+# Fill /data with a large file
+dd if=/dev/zero of=/data/bigfile bs=1M count=900
+df -h /data
+Diagnose:
 
-Find the cause and extend it.
+bash
+df -h /data
+du -sh /data/* | sort -rh | head -10
+lsof +L1   # Check for deleted but open files
+Fix:
+
+Delete or compress large files:
+
+bash
+rm /data/bigfile
+Or extend the LV:
+
+bash
+lvextend -L +1G /dev/vg_lab/lv_data
+resize2fs /dev/vg_lab/lv_data
+df -h /data
+Scenario 2: Inode full
+Simulate:
+
+bash
+# Create many small files
+mkdir /data/many
+for i in {1..100000}; do touch /data/many/file$i; done
+df -i /data
+Diagnose:
+
+bash
+df -i /data
+find /data -xdev -type f | wc -l
+find /data -xdev -type d -size +10M
+Fix:
+
+Delete unnecessary files:
+
+bash
+rm -rf /data/many
+If inodes are exhausted on ext4, you cannot increase them without recreating the filesystem. Consider migrating to XFS (dynamic inodes) or a new filesystem with more inodes.
+
+Debug Chain for Storage
+text
+df -h / df -i
+  ↓
+du -sh /* | sort -rh
+  ↓
+find / -xdev -size +1G
+  ↓
+lsof +L1 (deleted open files)
+  ↓
+Extend LV or clean up
+🎤 Interview Questions
+Basic
+What is the difference between df and du?
+
+How do you check disk usage in Linux?
+
+What is an inode?
+
+What is a mount point?
+
+How do you mount a filesystem permanently?
+
+What is LVM?
+
+What are the advantages of XFS over ext4?
+
+How do you check the filesystem type of a partition?
+
+What does lsblk show?
+
+How do you create a new partition?
+
+Intermediate
+Explain the LVM stack: PV, VG, LV.
+
+How do you extend a logical volume online?
+
+What is the difference between a disk full and inode full?
+
+How do you find the largest files in a directory?
+
+What is /etc/fstab and how do you safely edit it?
+
+What is the difference between MBR and GPT?
+
+How do you check for deleted but open files?
+
+What happens if you remove a file but df still shows it as used?
+
+How do you resize an XFS filesystem?
+
+What is blkid used for?
+
+Advanced
+How does LVM snapshots work?
+
+What is the difference between lvextend and lvresize?
+
+How would you migrate data from one disk to another without downtime?
+
+What is the difference between parted and fdisk?
+
+How do you recover a deleted LVM volume?
+
+How does ext4 journaling work?
+
+What is the purpose of the noatime mount option?
+
+How do you troubleshoot a filesystem that won't mount?
+
+What is fsck and when should you run it?
+
+How do you plan storage for a database vs a log server?
+
+📝 Notes & Reflections
+Key Takeaways
+The storage stack: disk → partition → PV → VG → LV → filesystem → mount
+
+Always check both df -h and df -i when troubleshooting a full disk
+
+LVM allows online extension without downtime
+
+XFS cannot be shrunk; ext4 can
+
+/etc/fstab mistakes can prevent boot — always test with mount -a
+
+
+
