@@ -1,44 +1,367 @@
-*DAY 1 — Linux Foundation*
-Learn
-Linux filesystem
-/
-/etc
-/var
-/home
-/tmp
-/opt
-/usr
-/proc
-/sys
-File commands
-ls
-cd
-pwd
-cp
-mv
-rm
+Day 01 — Linux Foundation
+Phase 1 · Basecamp · Week 1
+Goal: Understand the Linux filesystem hierarchy, navigate and manipulate files, and master core text‑processing tools.
+
+📋 Table of Contents
+Learning Objectives
+
+Core Concepts
+
+Linux Filesystem Hierarchy
+
+File Commands
+
+Text Processing Commands
+
+Command Reference
+
+Lab: Build the devops-lab Structure
+
+Practice: find, grep, awk, sed, sort, cut, xargs
+
+Common Pitfalls
+
+Interview Questions
+
+Notes & Reflections
+
+Day 1 Checklist
+
+Next Steps
+
+🎯 Learning Objectives
+By the end of this day, you should be able to:
+
+Explain the purpose of key Linux directories (/, /etc, /var, /home, /tmp, /opt, /usr, /proc, /sys)
+
+Navigate the filesystem confidently using ls, cd, pwd
+
+Create, copy, move, and delete files/directories with cp, mv, rm
+
+Search for files and content using find and grep
+
+View file contents with head, tail, less
+
+Process text streams using awk, sed, sort, cut, xargs
+
+Build a structured project directory and document it with a README
+
+🧠 Core Concepts
+Linux Filesystem Hierarchy
+Linux uses a single inverted‑tree structure. Everything starts at / (root).
+
+Directory	Purpose
+/	Root of the entire filesystem
+/etc	System‑wide configuration files (e.g., /etc/passwd, /etc/nginx/)
+/var	Variable data — logs, spools, caches (/var/log, /var/lib)
+/home	User home directories (/home/alice)
+/tmp	Temporary files; cleared on reboot
+/opt	Optional/add‑on software packages (e.g., /opt/google)
+/usr	User system resources — binaries, libraries, docs (/usr/bin, /usr/lib)
+/proc	Virtual filesystem for process and kernel info (/proc/cpuinfo)
+/sys	Virtual filesystem for hardware and kernel parameters
+Tip: man hier gives the full official description.
+
+File Commands
+Command	Description	Example
+ls	List directory contents	ls -lah /var/log
+cd	Change directory	cd /etc/nginx
+pwd	Print working directory	pwd
+cp	Copy files/dirs	cp file.txt /tmp/
+mv	Move/rename	mv old.txt new.txt
+rm	Remove files/dirs	rm -rf /tmp/junk
+find	Search for files	find / -name "*.conf"
+grep	Search text	grep "error" /var/log/syslog
+head	First lines	head -n 20 file.log
+tail	Last lines	tail -f /var/log/syslog
+less	Page through file	less /etc/services
+Text Processing Commands
+Command	Description	Example
+awk	Pattern scanning & processing	awk '{print $1}' file.txt
+sed	Stream editor	sed 's/old/new/g' file.txt
+sort	Sort lines	sort -n numbers.txt
+cut	Extract columns	cut -d: -f1 /etc/passwd
+xargs	Build command lines from input	find . -name "*.tmp" | xargs rm
+🛠 Command Reference
+Navigation & Listing
+bash
+pwd                       # Show current directory
+cd /var/log               # Change to /var/log
+cd ~                      # Go to home directory
+cd -                      # Go to previous directory
+ls -l                     # Long listing
+ls -a                     # Show hidden files
+ls -lh                    # Human-readable sizes
+ls -lt                    # Sort by modification time
+File Manipulation
+bash
+cp file1 file2            # Copy file
+cp -r dir1 dir2           # Copy directory recursively
+mv file1 /tmp/            # Move file
+mv oldname newname        # Rename
+rm file                   # Remove file
+rm -r dir                 # Remove directory recursively
+rm -rf dir                # Force remove (use with caution!)
+Searching
+bash
+# find
+find /etc -name "*.conf"                  # By name
+find /var -type f -size +100M             # Files larger than 100MB
+find /home -user alice                    # Files owned by user
+find . -mtime -7                          # Modified in last 7 days
+
+# grep
+grep "error" /var/log/syslog              # Basic search
+grep -i "error" file.txt                  # Case-insensitive
+grep -r "TODO" .                          # Recursive
+grep -v "debug" file.log                  # Invert match
+grep -E "error|fail" file.log             # Extended regex
+Viewing Files
+bash
+head -n 20 file.log       # First 20 lines
+tail -n 50 file.log       # Last 50 lines
+tail -f file.log          # Follow (live)
+less file.log             # Scrollable viewer (q to quit)
+Text Processing
+bash
+awk '{print $1, $3}' file.txt             # Print columns 1 and 3
+awk -F: '{print $1}' /etc/passwd          # Custom delimiter
+sed 's/foo/bar/g' file.txt                # Replace all
+sed -i 's/foo/bar/g' file.txt             # In-place edit
+sort file.txt                             # Alphabetical
+sort -n numbers.txt                       # Numeric
+sort -k2 file.txt                         # By second column
+cut -d: -f1 /etc/passwd                   # First field, colon delimiter
+cut -c1-10 file.txt                       # First 10 characters
+find . -name "*.log" | xargs rm           # Delete all .log files
+🧪 Lab: Build the devops-lab Structure
+Objective: Create a well‑organised project skeleton and populate it with sample files to practice commands.
+
+Step 1: Create the directory tree
+bash
+mkdir -p devops-lab/{scripts,logs,configs,backup}
+cd devops-lab
+touch README.md
+Verify:
+
+bash
+tree devops-lab     # if tree is installed
+# or
+find devops-lab -type d
+Step 2: Add sample files
+bash
+# scripts
+echo '#!/bin/bash' > scripts/hello.sh
+echo 'echo "Hello, DevOps"' >> scripts/hello.sh
+chmod +x scripts/hello.sh
+
+# logs
+for i in {1..5}; do echo "Log entry $i" > logs/app-$i.log; done
+
+# configs
+echo "server_name=localhost" > configs/app.conf
+echo "port=8080" >> configs/app.conf
+
+# backup
+echo "backup placeholder" > backup/backup.txt
+Step 3: Practice navigation and listing
+bash
+ls -R
+cd scripts && pwd && cd ..
+Step 4: Document the structure in README.md
+bash
+cat > README.md <<'EOF'
+# DevOps Lab
+
+A structured workspace for Linux and DevOps practice.
+
+## Directory layout
+
+- `scripts/` – executable scripts
+- `logs/` – application log files
+- `configs/` – configuration files
+- `backup/` – backup artefacts
+EOF
+Step 5: Clean up (optional)
+bash
+cd ..
+rm -rf devops-lab
+🔍 Practice: find, grep, awk, sed, sort, cut, xargs
+Using the devops-lab structure (recreate if needed), run these exercises.
+
 find
+bash
+# Find all .log files
+find devops-lab -name "*.log"
+
+# Find files larger than 1KB
+find devops-lab -type f -size +1k
+
+# Find and delete all .tmp files (if any)
+find devops-lab -name "*.tmp" -delete
 grep
-head
-tail
-less
-Lab
+bash
+# Search for "port" in configs
+grep -r "port" devops-lab/configs
 
-Create:
+# Case-insensitive search
+grep -i "hello" devops-lab/scripts/hello.sh
 
-devops-lab/
-├── scripts/
-├── logs/
-├── configs/
-├── backup/
-└── README.md
-
-Practice:
-
-find
-grep
+# Show line numbers
+grep -n "server" devops-lab/configs/app.conf
 awk
+bash
+# Print first column of app.conf (key=value pairs)
+awk -F= '{print $1}' devops-lab/configs/app.conf
+
+# Print lines with port > 8000
+awk -F= '$1=="port" && $2>8000 {print}' devops-lab/configs/app.conf
 sed
+bash
+# Replace "localhost" with "127.0.0.1" in app.conf
+sed 's/localhost/127.0.0.1/' devops-lab/configs/app.conf
+
+# In-place edit (backup original)
+sed -i.bak 's/localhost/127.0.0.1/' devops-lab/configs/app.conf
 sort
+bash
+# Sort log files by name
+ls devops-lab/logs | sort
+
+# Numeric sort
+echo -e "10\n2\n30" | sort -n
 cut
+bash
+# Extract usernames from /etc/passwd
+cut -d: -f1 /etc/passwd | head -5
+
+# Extract first 5 characters of each line in app.conf
+cut -c1-5 devops-lab/configs/app.conf
 xargs
+bash
+# Remove all .log files using xargs
+find devops-lab/logs -name "*.log" | xargs rm
+
+# Echo each file
+find devops-lab -type f | xargs -I {} echo "File: {}"
+⚠️ Common Pitfalls
+rm -rf / – never run this. Always double‑check paths.
+
+find with -exec – remember {} and \; or +.
+
+grep -r on / – can be extremely slow; limit scope.
+
+sed -i – always test without -i first, or use a backup suffix.
+
+xargs with spaces in filenames – use -0 with find -print0.
+
+🎤 Interview Questions
+Basic
+What is the purpose of /etc, /var, and /home?
+
+How do you list hidden files?
+
+What is the difference between cp and mv?
+
+How do you search for a file by name?
+
+How do you view the last 20 lines of a log file?
+
+What does grep -i do?
+
+How do you make a script executable?
+
+What is the difference between > and >>?
+
+How do you find all files larger than 100MB?
+
+What does pwd do?
+
+Intermediate
+Explain the difference between find and locate.
+
+How do you replace all occurrences of a string in a file?
+
+What is the difference between head and tail?
+
+How do you count lines in a file?
+
+What does awk -F: '{print $1}' /etc/passwd do?
+
+How do you sort a file numerically?
+
+What is xargs used for?
+
+How do you search recursively for a pattern?
+
+What is the difference between less and more?
+
+How do you find files modified in the last 24 hours?
+
+Advanced
+How would you find and delete all files older than 30 days?
+
+How do you handle filenames with spaces in find/xargs?
+
+What is the difference between soft links and hard links?
+
+How does sed differ from awk?
+
+How do you replace a string only on lines matching a pattern?
+
+How do you extract the 3rd column of a CSV?
+
+What is the purpose of /proc?
+
+How do you check disk usage of a directory?
+
+How do you find the top 10 largest files in a directory?
+
+How do you safely edit a file in a script?
+
+📝 Notes & Reflections
+Key Takeaways
+Linux filesystem is a single tree; know the purpose of each top‑level directory.
+
+find + grep + xargs is a powerful combination for automation.
+
+Always test sed/awk on a copy before using -i.
+
+man is your best friend — use man <command>.
+
+What I Struggled With
+□ Remembering find flags
+□ awk syntax
+□ xargs with special characters
+What I Want to Learn Next
+□ Regular expressions deep dive
+□ Shell scripting best practices
+□ rsync and tar
+□ Permissions and ownership
+📚 Resources
+man hier
+
+Linux Filesystem Hierarchy (tldp.org)
+
+GNU Coreutils Manual
+
+The Linux Command Line (William Shotts)
+
+✅ Day 1 Checklist
+□ Read all core concepts
+□ Created the devops-lab directory structure
+□ Practiced every command in the reference
+□ Completed all text‑processing exercises
+□ Answered at least 10 interview questions out loud
+□ Wrote notes and reflections
+□ Committed README to GitHub
+🚀 Next Steps
+Day 2: Users, Groups & Permissions
+
+Day 3: Processes & Services
+
+Day 4: Storage + Filesystem
+
+Day 5: Networking
+
+Remember: Mastery of the Linux command line is the foundation of everything else in DevOps. Practice daily.
