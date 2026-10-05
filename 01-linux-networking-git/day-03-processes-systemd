@@ -1,0 +1,40 @@
+DAY 3 — Processes & Services
+Learn
+ps
+top
+htop
+pgrep
+pkill
+kill
+kill -9
+nice
+renice
+jobs
+bg
+fg
+
+Then systemd:
+
+systemctl
+journalctl
+Lab
+
+Create a simple systemd service.
+
+Example:
+
+myapp.service
+
+Start/stop/restart it.
+
+Break it
+
+Introduce a wrong configuration.
+
+Then troubleshoot:
+
+systemctl status
+journalctl -u
+Interview
+
+Application is down. How do you troubleshoot?
