@@ -1,0 +1,45 @@
+DAY 4 — Storage + Filesystem
+Learn
+df
+du
+lsblk
+mount
+umount
+blkid
+fdisk
+parted
+
+Because you're coming from Linux administration, go deeper:
+
+partitions
+filesystem
+mount points
+/etc/fstab
+inode
+disk full vs inode full
+XFS vs ext4
+LVM basics
+Lab
+
+Create a virtual disk and:
+
+Disk
+ ↓
+Partition
+ ↓
+PV
+ ↓
+VG
+ ↓
+LV
+ ↓
+Filesystem
+ ↓
+Mount
+Troubleshooting
+
+Simulate:
+
+/data = 100%
+
+Find the cause and extend it.
