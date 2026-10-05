@@ -1,0 +1,600 @@
+Day 05 — Networking
+Phase 1 · Basecamp · Week 1
+Goal: Understand how traffic moves from a client to an application — and how to debug it layer by layer.
+
+📋 Table of Contents
+Learning Objectives
+
+Core Concepts
+
+Command Reference
+
+Lab: Run a Web Server and Access It Locally
+
+Troubleshooting: The Debug Chain
+
+Interview Questions
+
+Notes & Reflections
+
+Resources
+
+🎯 Learning Objectives
+By the end of this day, you should be able to:
+
+Explain how a packet travels from a client to an application
+
+Differentiate between IP, subnet, gateway, and routing
+
+Describe TCP vs UDP and when each is used
+
+Identify common ports and their services
+
+Explain DNS resolution and record types
+
+Break down HTTP/HTTPS request/response lifecycle
+
+Use core networking commands to inspect and debug connectivity
+
+Systematically troubleshoot network issues from client to application
+
+🧠 Core Concepts
+1. IP Addressing
+An IP address is a unique identifier for a device on a network.
+
+Type	Example	Description
+IPv4	192.168.1.10	32-bit address, dotted decimal
+IPv6	2001:db8::1	128-bit address, hexadecimal
+Private	10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16	Not routable on the public internet
+Public	8.8.8.8	Globally routable
+Loopback	127.0.0.1	Refers to the local machine
+bash
+# Show all IP addresses on the machine
+ip addr show
+
+# Short form
+ip a
+2. Subnet
+A subnet divides a network into smaller logical segments.
+
+CIDR notation: 192.168.1.0/24
+
+/24 means 24 bits are the network portion, 8 bits are for hosts → 256 addresses (254 usable)
+
+Subnet mask: 255.255.255.0
+
+CIDR	Subnet Mask	Usable Hosts
+/24	255.255.255.0	254
+/25	255.255.255.128	126
+/26	255.255.255.192	62
+/16	255.255.0.0	65,534
+bash
+# Show routes and subnets
+ip route show
+
+# Show a specific interface
+ip addr show eth0
+3. Gateway
+A gateway (default gateway) is the router that forwards traffic from your local network to other networks.
+
+bash
+# Show the default gateway
+ip route | grep default
+# Output: default via 192.168.1.1 dev eth0
+If the destination is on the same subnet → send directly
+
+If the destination is outside the subnet → send to the gateway
+
+4. Routing
+Routing is the process of selecting a path for traffic across networks.
+
+bash
+# Show the routing table
+ip route show
+
+# Trace the path packets take to a destination
+traceroute google.com
+
+# Alternative (no root required)
+tracepath google.com
+Routing table example:
+
+text
+default via 192.168.1.1 dev eth0 proto dhcp metric 100
+192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.10
+First line: default route (all unknown traffic goes here)
+
+Second line: local subnet route
+
+5. TCP vs UDP
+Feature	TCP	UDP
+Connection	Connection-oriented (3-way handshake)	Connectionless
+Reliability	Guaranteed delivery, ordering	No guarantee
+Speed	Slower (overhead)	Faster
+Use cases	HTTP, HTTPS, SSH, SMTP	DNS, DHCP, VoIP, streaming
+Header size	20–60 bytes	8 bytes
+Flow control	Yes	No
+TCP 3-way handshake:
+
+text
+Client          Server
+  |---- SYN ----->|
+  |<-- SYN-ACK ---|
+  |---- ACK ----->|
+  |               |
+  |<-- Data ----->|
+bash
+# List TCP connections
+ss -t
+
+# List UDP sockets
+ss -u
+
+# Show all listening ports with process info
+ss -lntp
+6. Ports
+A port identifies a specific service on a host.
+
+Port	Protocol	Service
+22	TCP	SSH
+53	TCP/UDP	DNS
+80	TCP	HTTP
+443	TCP	HTTPS
+3306	TCP	MySQL
+5432	TCP	PostgreSQL
+6379	TCP	Redis
+8080	TCP	HTTP alternative
+27017	TCP	MongoDB
+bash
+# Show listening ports
+ss -lntp
+
+# Check if a specific port is open
+nc -zv localhost 80
+7. DNS
+DNS (Domain Name System) translates human-readable names into IP addresses.
+
+Resolution flow:
+
+text
+Client
+  ↓
+Local resolver (/etc/hosts, systemd-resolved)
+  ↓
+Recursive resolver (ISP or 8.8.8.8)
+  ↓
+Root nameserver
+  ↓
+TLD nameserver (.com)
+  ↓
+Authoritative nameserver (example.com)
+  ↓
+IP address returned
+Common record types:
+
+Record	Purpose	Example
+A	IPv4 address	example.com → 93.184.216.34
+AAAA	IPv6 address	example.com → 2606:2800:...
+CNAME	Alias	www → example.com
+MX	Mail server	example.com → mail.example.com
+TXT	Verification	SPF, DKIM, domain verification
+NS	Nameserver	example.com → ns1.example.com
+bash
+# Query DNS
+dig google.com
+dig google.com A
+dig google.com MX
+dig +short google.com
+
+# Alternative
+nslookup google.com
+
+# Check local DNS config
+cat /etc/resolv.conf
+cat /etc/hosts
+8. HTTP/HTTPS
+HTTP is the protocol for web communication.
+
+Request:
+
+text
+GET /index.html HTTP/1.1
+Host: example.com
+User-Agent: curl/7.68.0
+Accept: */*
+Response:
+
+text
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 1256
+
+<html>...</html>
+Common status codes:
+
+Code	Meaning
+200	OK
+301	Moved Permanently
+302	Found (temporary redirect)
+400	Bad Request
+401	Unauthorized
+403	Forbidden
+404	Not Found
+500	Internal Server Error
+502	Bad Gateway
+503	Service Unavailable
+504	Gateway Timeout
+HTTPS = HTTP + TLS encryption.
+
+bash
+# Make HTTP request
+curl http://example.com
+
+# Verbose (see headers)
+curl -v http://example.com
+
+# Show only headers
+curl -I http://example.com
+
+# Follow redirects
+curl -L http://example.com
+
+# HTTPS with certificate info
+curl -vI https://example.com
+🛠 Command Reference
+ip — Network interface and routing
+bash
+ip addr show              # Show all interfaces
+ip a                      # Short form
+ip route show             # Show routing table
+ip route | grep default   # Show default gateway
+ip link show              # Show link-layer info
+ss — Socket statistics
+bash
+ss -lntp                  # Listening TCP ports with process info
+ss -t                     # TCP connections
+ss -u                     # UDP sockets
+ss -tunap                 # All connections (TCP/UDP/Unix) with processes
+ss -s                     # Summary statistics
+Flags:
+
+-l → listening
+
+-n → numeric (don't resolve names)
+
+-t → TCP
+
+-u → UDP
+
+-p → process
+
+-a → all
+
+ping — Test connectivity
+bash
+ping google.com
+ping -c 4 google.com      # Send 4 packets
+ping -i 0.5 google.com    # Interval 0.5s
+traceroute — Trace packet path
+bash
+traceroute google.com
+traceroute -n google.com  # No DNS resolution
+tracepath google.com      # No root required
+curl — Transfer data
+bash
+curl http://example.com
+curl -v http://example.com          # Verbose
+curl -I http://example.com          # Headers only
+curl -L http://example.com          # Follow redirects
+curl -o file.html http://example.com # Save to file
+curl -X POST -d "key=value" http://api.example.com
+curl -H "Authorization: Bearer token" http://api.example.com
+wget — Download files
+bash
+wget http://example.com/file.tar.gz
+wget -O output.html http://example.com
+wget -c http://example.com/large-file.iso  # Continue partial download
+dig — DNS lookup
+bash
+dig google.com
+dig google.com A
+dig google.com MX
+dig +short google.com
+dig @8.8.8.8 google.com
+dig +trace google.com
+nslookup — DNS lookup (simpler)
+bash
+nslookup google.com
+nslookup google.com 8.8.8.8
+🧪 Lab: Run a Web Server and Access It Locally
+Step 1: Start a simple web server
+bash
+# Using Python 3
+python3 -m http.server 8080
+
+# Or using Python 2
+python -m SimpleHTTPServer 8080
+
+# Or using nginx (if installed)
+sudo systemctl start nginx
+Expected output:
+
+text
+Serving HTTP on 0.0.0.0 port 8080 (http://0.0.0.0:8080/) ...
+Step 2: Check listening ports
+bash
+ss -lntp
+Expected output:
+
+text
+State    Recv-Q   Send-Q   Local Address:Port   Peer Address:Port   Process
+LISTEN   0        5        0.0.0.0:8080         0.0.0.0:*           users:(("python3",pid=1234,fd=3))
+Step 3: Access locally
+bash
+curl localhost:8080
+curl http://127.0.0.1:8080
+curl -v http://localhost:8080
+Expected output:
+
+text
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Directory listing for /</title>
+...
+Step 4: Access from another terminal
+bash
+# In another terminal, find your IP
+ip addr show
+
+# Access via IP
+curl http://192.168.1.10:8080
+Step 5: Test with wget
+bash
+wget -O - http://localhost:8080
+Step 6: Inspect the connection
+bash
+# In one terminal, watch connections
+watch -n 1 'ss -tnp | grep 8080'
+
+# In another terminal, make a request
+curl http://localhost:8080
+🔥 Troubleshooting: The Debug Chain
+When a client cannot reach an application, follow this chain in order:
+
+text
+Client
+  ↓
+DNS
+  ↓
+IP
+  ↓
+Port
+  ↓
+Firewall
+  ↓
+Application
+Step 1: Client
+Check: Is the client even trying to connect?
+
+bash
+# Check if the client has network
+ip addr show
+ip route show
+
+# Ping the destination IP directly (bypass DNS)
+ping -c 4 192.168.1.10
+If ping fails:
+
+Client network is down
+
+Destination is unreachable
+
+ICMP is blocked (try TCP instead)
+
+Step 2: DNS
+Check: Does the name resolve?
+
+bash
+dig example.com
+nslookup example.com
+host example.com
+If DNS fails:
+
+Check /etc/resolv.conf
+
+Check /etc/hosts
+
+Try dig @8.8.8.8 example.com
+
+Check if the DNS server is reachable
+
+If DNS resolves to wrong IP:
+
+Check for stale cache
+
+Check for split-horizon DNS
+
+Check /etc/hosts for overrides
+
+Step 3: IP
+Check: Is the destination IP reachable?
+
+bash
+ping -c 4 <resolved-ip>
+traceroute <resolved-ip>
+If IP is unreachable:
+
+Check routing table: ip route
+
+Check if the destination is on the same subnet
+
+Check if the gateway is reachable
+
+Check for network segmentation (VLAN, VPC)
+
+Step 4: Port
+Check: Is the port open?
+
+bash
+# Check locally on the server
+ss -lntp | grep :8080
+
+# Check from the client
+nc -zv <ip> 8080
+telnet <ip> 8080
+curl -v telnet://<ip>:8080
+If port is closed:
+
+Application is not running
+
+Application is listening on a different port
+
+Application is listening on 127.0.0.1 instead of 0.0.0.0
+
+Fix: Change bind address to 0.0.0.0:
+
+bash
+# Python
+python3 -m http.server 8080 --bind 0.0.0.0
+
+# nginx
+# listen 0.0.0.0:80;
+Step 5: Firewall
+Check: Is a firewall blocking traffic?
+
+bash
+# Check iptables
+sudo iptables -L -n -v
+
+# Check ufw
+sudo ufw status verbose
+
+# Check firewalld
+sudo firewall-cmd --list-all
+
+# Check nftables
+sudo nft list ruleset
+Common firewall issues:
+
+Issue	Symptom	Fix
+Port blocked	Connection refused/timeout	Open port: sudo ufw allow 8080
+Wrong interface	Traffic dropped	Allow on correct interface
+Rate limiting	Intermittent failures	Check rules
+Default deny	All blocked	Add explicit allow rule
+Test by temporarily disabling firewall:
+
+bash
+sudo ufw disable
+# Test again
+curl http://<ip>:8080
+# Re-enable
+sudo ufw enable
+Step 6: Application
+Check: Is the application responding?
+
+bash
+# Check application logs
+journalctl -u myapp -f
+tail -f /var/log/myapp.log
+
+# Check application process
+ps aux | grep myapp
+
+# Check application health endpoint
+curl http://localhost:8080/health
+If application is not responding:
+
+Application crashed → check logs
+
+Application is overloaded → check CPU/memory
+
+Application is waiting on a dependency → check DB, cache
+
+Application has a bug → check error logs
+
+Debug Chain Summary Table
+Layer	Command	What to Check
+Client	ip a, ip route	Network up, route exists
+DNS	dig, nslookup	Name resolves to correct IP
+IP	ping, traceroute	IP reachable, path correct
+Port	ss -lntp, nc -zv	Port open and listening
+Firewall	iptables -L, ufw status	No blocking rules
+Application	curl, journalctl	App running and responding
+🎤 Interview Questions
+Basic
+What is the difference between TCP and UDP?
+
+What happens when you type google.com in a browser?
+
+What is a subnet mask?
+
+What is the default gateway?
+
+What is the difference between a public and private IP?
+
+What are the most common ports and their services?
+
+What is DNS and how does it work?
+
+What is the difference between HTTP and HTTPS?
+
+What is a 502 error and how do you debug it?
+
+How do you check if a port is open?
+
+Intermediate
+Explain the TCP 3-way handshake.
+
+What is the difference between ss and netstat?
+
+How does traceroute work?
+
+What is a DNS CNAME record?
+
+How do you troubleshoot a DNS resolution failure?
+
+What is the difference between a router and a switch?
+
+What is NAT and why is it used?
+
+How do you check which process is listening on a port?
+
+What is the difference between curl and wget?
+
+How do you test connectivity to a specific port?
+
+Advanced
+What happens at the kernel level when you run curl localhost:8080?
+
+How does DNS caching work at each layer?
+
+What is the difference between a load balancer and a reverse proxy?
+
+How would you debug a "connection refused" error?
+
+How would you debug a "connection timeout" error?
+
+What is the difference between iptables and nftables?
+
+How does HTTPS certificate validation work?
+
+What is a SYN flood attack?
+
+How does traceroute differ from mtr?
+
+What is the difference between ping and nc -zv?
+
+📝 Notes & Reflections
+Key Takeaways
+Networking is layered: client → DNS → IP → port → firewall → application
+
+Always debug in order; don't skip steps
+
+ss -lntp is your best friend for checking listening ports
+
+curl -v shows the full HTTP conversation
+
+dig +trace shows the full DNS resolution path
+
+Firewalls are the most common cause of "it works locally but not remotely"
